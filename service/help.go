@@ -3,12 +3,14 @@ package service
 import (
 	"context"
 	"github.com/asynccnu/be-feedback_help/domain"
+	"github.com/asynccnu/be-feedback_help/pkg/logger"
 	"github.com/asynccnu/be-feedback_help/repository"
 	"time"
 )
 
 type HelpSer struct {
 	repo repository.HelpRepository
+	l    logger.Logger
 }
 
 type Service interface {
@@ -23,8 +25,8 @@ type Service interface {
 	NoteMoreFeedbackSearchSkip(ctx context.Context, search domain.EventQuestion) error
 }
 
-func NewFeedbackHelpService(repo repository.HelpRepository) Service {
-	return &HelpSer{repo: repo}
+func NewFeedbackHelpService(repo repository.HelpRepository, l logger.Logger) Service {
+	return &HelpSer{repo: repo, l: l}
 }
 
 func (ser *HelpSer) GetQuestions(ctx context.Context) ([]domain.FrequentlyAskedQuestion, error) {
@@ -36,14 +38,26 @@ func (ser *HelpSer) FindQuestionByName(ctx context.Context, name string) ([]doma
 func (ser *HelpSer) CreateQuestion(ctx context.Context, q domain.FrequentlyAskedQuestion) error {
 	q.Utime = time.Now()
 	q.Ctime = time.Now()
-	return ser.repo.CreateQuestion(ctx, q)
+	if err := ser.repo.CreateQuestion(ctx, q); err != nil {
+		ser.l.Error("CreateQuestion", logger.Error(err))
+		return err
+	}
+	return nil
 }
 func (ser *HelpSer) ChangeQuestion(ctx context.Context, q domain.FrequentlyAskedQuestion) error {
 	q.Utime = time.Now()
-	return ser.repo.ChangeQuestion(ctx, q)
+	if err := ser.repo.ChangeQuestion(ctx, q); err != nil {
+		ser.l.Error("ChangeQuestion", logger.Error(err))
+		return err
+	}
+	return nil
 }
 func (ser *HelpSer) DeleteQuestion(ctx context.Context, q domain.FrequentlyAskedQuestion) error {
-	return ser.repo.DeleteQuestion(ctx, q)
+	if err := ser.repo.DeleteQuestion(ctx, q); err != nil {
+		ser.l.Error("DeleteQuestion", logger.Error(err))
+		return err
+	}
+	return nil
 }
 func (ser *HelpSer) NoteQuestion(ctx context.Context, q domain.Question) error {
 	q.Ctime = time.Now()
