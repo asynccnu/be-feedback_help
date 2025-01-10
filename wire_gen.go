@@ -24,7 +24,7 @@ func InitGRPCServer() grpcx.Server {
 	daoDao := dao.NewFeedbackHelpGormDao(db)
 	cmdable := ioc.InitRedis()
 	cacheCache := cache.NewFeedbackHelpRedisCache(cmdable)
-	helpRepository := repository.NewFeedbackHelpHelpRepository(daoDao, cacheCache)
+	helpRepository := repository.NewFeedbackHelpHelpRepository(daoDao, cacheCache,logger)
 	serviceService := service.NewFeedbackHelpService(helpRepository,logger)
 	feedbackHelpService := grpc.NewFeedbackHelpServiceServer(serviceService)
 	client := ioc.InitEtcdClient()

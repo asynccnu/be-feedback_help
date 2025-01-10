@@ -2,16 +2,19 @@ package dao
 
 import (
 	"context"
+	"fmt"
 	"github.com/asynccnu/be-feedback_help/domain"
 	"time"
 )
 
 // 获取常用问题
 func (dao *GormDao) GetQuestions(ctx context.Context) ([]domain.FrequentlyAskedQuestion, error) {
+	if dao.db == nil {
+		return nil, fmt.Errorf("数据库连接失败")
+	}
 	var FSQ []domain.FrequentlyAskedQuestion
-	err := dao.db.WithContext(ctx).Model(&FrequentlyAskedQuestion{}).Find(&FSQ).Limit(10).Error
+	err := dao.db.WithContext(ctx).Model(&FrequentlyAskedQuestion{}).Limit(10).Find(&FSQ).Error
 	return FSQ, err
-
 }
 
 // 搜索
@@ -23,7 +26,7 @@ func (dao *GormDao) FindQuestionsByName(ctx context.Context, name string) ([]dom
 
 // 创建问题
 func (dao *GormDao) CreateQuestion(ctx context.Context, q domain.FrequentlyAskedQuestion) error {
-	return dao.db.WithContext(ctx).Create(&q).Error
+	return dao.db.Debug().WithContext(ctx).Create(&q).Error
 }
 
 // 更改问题

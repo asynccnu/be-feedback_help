@@ -27,8 +27,24 @@ type CachedRepository struct {
 	l     logger.Logger
 }
 
-func NewFeedbackHelpHelpRepository(dao dao.Dao, cache cache.Cache) HelpRepository {
-	return &CachedRepository{dao: dao, cache: cache}
+func NewFeedbackHelpHelpRepository(dao dao.Dao, cache cache.Cache, l logger.Logger) HelpRepository {
+	return &CachedRepository{dao: dao, cache: cache, l: l}
+}
+
+func (repo *CachedRepository) UpdateCache() error { //更新缓存，不对外暴露，在内部处理错误
+	ctx, cancel := context.WithTimeout(context.Background(), time.Second*2)
+	defer cancel()
+	cache, err := repo.dao.GetQuestions(ctx)
+	if err != nil {
+		repo.l.Error("缓存更新失败,获取问题失败", logger.Error(err))
+		return err
+	}
+	err = repo.cache.Set(ctx, cache)
+	if err != nil {
+		repo.l.Error("缓存更新失败，存储问题失败", logger.Error(err))
+		return err
+	}
+	return nil
 }
 
 func (repo *CachedRepository) GetQuestions(ctx context.Context) ([]domain.FrequentlyAskedQuestion, error) {
@@ -40,7 +56,6 @@ func (repo *CachedRepository) GetQuestions(ctx context.Context) ([]domain.Freque
 		// redis崩溃或者网络错误，用户量不大，MySQL撑得住，所以不降级处理
 		repo.l.Error("访问Redis失败，查询常见问题缓存", logger.Error(err))
 	}
-
 	result, err := repo.dao.GetQuestions(ctx)
 	// 异步回写
 	go func() {
@@ -66,15 +81,21 @@ func (repo *CachedRepository) FindQuestionByName(ctx context.Context, name strin
 }
 
 func (repo *CachedRepository) CreateQuestion(ctx context.Context, q domain.FrequentlyAskedQuestion) error {
-	return repo.dao.CreateQuestion(ctx, q)
+	err := repo.dao.CreateQuestion(ctx, q)
+	repo.UpdateCache()
+	return err
 }
 
 func (repo *CachedRepository) ChangeQuestion(ctx context.Context, q domain.FrequentlyAskedQuestion) error {
-	return repo.dao.ChangeQuestion(ctx, q)
+	err := repo.dao.ChangeQuestion(ctx, q)
+	repo.UpdateCache()
+	return err
 }
 
 func (repo *CachedRepository) DeleteQuestion(ctx context.Context, q domain.FrequentlyAskedQuestion) error {
-	return repo.dao.DeleteQuestion(ctx, q)
+	err := repo.dao.DeleteQuestion(ctx, q)
+	repo.UpdateCache()
+	return err
 }
 
 func (repo *CachedRepository) NoteQuestion(ctx context.Context, q domain.Question) error {
